@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e4fa8">
+<title>退席時の運行情報</title>
+<style>
+  :root {
+    --primary: #1e4fa8;
+    --primary-dark: #173f88;
+    --text: #222;
+    --muted: #555;
+    --line: #8a8a8a;
+    --bg: #f5f5f5;
+    --footer: #ebebeb;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+    color: var(--text);
+    background: var(--bg);
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
+  /* ヘッダー */
+  header {
+    background: var(--primary);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    padding-top: calc(8px + env(safe-area-inset-top));
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .icon-btn { background: none; border: 0; color: inherit; padding: 4px; cursor: pointer; display: flex; }
+  .brand { font-size: 24px; letter-spacing: .5px; flex: 1; }
+  .user-box { text-align: right; font-size: 14px; line-height: 1.4; min-width: 0; }
+  .user-box .email { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+  .status { display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+  .status .dot { width: 12px; height: 12px; border-radius: 50%; background: #6cc24a; border: 1px solid #fff; }
+
+  /* 本体 */
+  main { flex: 1; width: 100%; max-width: 480px; margin: 0 auto; padding: 32px 24px 40px; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  h1 { font-size: 17px; font-weight: 500; text-align: center; margin: 24px 0 20px; }
+
+  .field { display: grid; grid-template-columns: 84px 1fr; align-items: end; gap: 12px; margin-bottom: 18px; }
+  .field label { text-align: right; font-size: 15px; padding-bottom: 6px; }
+  .field input, .field .value {
+    font: inherit; font-size: 15px; color: var(--text);
+    border: 0; border-bottom: 1px solid var(--line);
+    background: transparent; padding: 6px 0; width: 100%; min-width: 0;
+    border-radius: 0; outline: none;
+  }
+  .field input:focus { border-bottom: 2px solid var(--primary); padding-bottom: 5px; }
+  .field .value { word-break: break-all; }
+
+  .actions { margin-top: 40px; display: grid; gap: 14px; }
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font: inherit; font-size: 18px; height: 56px; border-radius: 4px; cursor: pointer;
+    border: 2px solid var(--primary); transition: background .15s, transform .05s;
+  }
+  .btn:active { transform: scale(.99); }
+  .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,.2); }
+  .btn-primary:hover { background: var(--primary-dark); }
+  .btn-outline { background: #fff; color: var(--primary); }
+  .btn-outline:hover { background: #eef3fc; }
+
+  .link-btn { background: none; border: 0; color: var(--primary); font: inherit; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; cursor: pointer; }
+
+  /* 完了画面 */
+  .done { text-align: center; padding-top: 8px; }
+  .done h2 { font-size: 20px; font-weight: 600; margin: 0 0 6px; }
+  .done .sub { color: var(--muted); font-size: 14px; margin: 0 0 16px; }
+  .check { width: 64px; height: 64px; border-radius: 50%; background: var(--primary); display: inline-flex; align-items: center; justify-content: center; margin: 8px 0 14px; }
+  .summary { background: #fff; border-radius: 6px; padding: 16px 20px; text-align: left; font-size: 14px; margin: 20px 0 24px; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .summary dl { display: grid; grid-template-columns: 84px 1fr; gap: 10px 12px; margin: 0; }
+  .summary dt { color: var(--muted); }
+  .summary dd { margin: 0; word-break: break-all; }
+  .stack { display: grid; gap: 12px; }
+
+  /* 運行情報 */
+  .rail { background: #fff; border-radius: 14px; overflow: hidden; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+  .rail .hero { position: relative; }
+  .rail .hero img { width: 100%; display: block; }
+  .rail .hero .over { position: absolute; left: 14px; top: 10px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  .rail .hero .over b { display: block; font-size: 18px; }
+  .rail .hero .over span { font-size: 12px; opacity: .9; }
+  .demo-badge { position: absolute; right: 10px; top: 10px; background: #fff; color: #c0392b; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; border: 2px solid #c0392b; }
+  .rail .body { padding: 12px 14px 14px; }
+  .alert { display: flex; gap: 10px; align-items: flex-start; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; line-height: 1.5; }
+  .alert.ok { background: #e9f7ef; color: #1e8449; }
+  .alert.warn { background: #fef5e7; color: #a04000; }
+  .alert.stop { background: #fdedec; color: #a93226; }
+  .alert b { display: block; font-size: 15px; }
+  .line { display: grid; grid-template-columns: 6px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid #eef0f3; }
+  .line:first-of-type { border-top: 0; }
+  .line .color { align-self: stretch; border-radius: 3px; }
+  .line .name { font-weight: 700; font-size: 15px; }
+  .line .text { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .status { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .status.normal { background: #e9f7ef; color: #1e8449; }
+  .status.delay { background: #fef5e7; color: #d35400; }
+  .status.stop { background: #fdedec; color: #c0392b; animation: pulse 1.2s ease-in-out infinite; }
+  .status.resume { background: #eaf2fb; color: #1f618d; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 5px rgba(192,57,43,.15); } }
+  .rail .foot { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--muted); padding-top: 10px; border-top: 1px solid #eef0f3; }
+  .refresh { display: inline-flex; align-items: center; gap: 4px; background: none; border: 1px solid #c8d3e6; color: var(--primary); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px; cursor: pointer; }
+  .refresh.spin svg { animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading { padding: 24px 0; text-align: center; color: var(--muted); font-size: 13px; }
+  .loading .track { position: relative; height: 4px; background: #e3e8ef; border-radius: 2px; margin: 0 20px 10px; overflow: hidden; }
+  .loading .track div { position: absolute; top: 0; width: 30%; height: 100%; background: var(--primary); border-radius: 2px; animation: run 1s ease-in-out infinite; }
+  @keyframes run { from { left: -30%; } to { left: 100%; } }
+  .empty { padding: 16px 0; text-align: center; font-size: 13px; color: var(--muted); }
+
+  /* 路線設定 */
+  .lines-head h2 { font-size: 20px; margin: 8px 0 4px; }
+  .lines-head p { font-size: 13px; color: var(--muted); margin: 0 0 16px; }
+  .group { margin-bottom: 18px; }
+  .group h3 { font-size: 13px; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1.5px solid #d5dbe5; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13px; cursor: pointer; color: var(--text); }
+  .chip i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .chip[aria-pressed="true"] { border-color: var(--primary); background: #eaf0fb; font-weight: 700; color: var(--primary); }
+  .chip[aria-pressed="true"]::after { content: "✓"; }
+
+  /* フッター */
+  footer { background: var(--footer); padding: 20px 20px calc(20px + env(safe-area-inset-bottom)); font-size: 14px; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 8px 0; }
+  footer nav a { color: var(--primary); text-decoration: none; padding: 0 12px; border-left: 1px solid #999; }
+  footer nav a:first-child { border-left: 0; padding-left: 0; }
+  footer .copy { color: #888; text-align: center; margin-top: 16px; font-size: 12px; }
+</style>
+</head>
+<body>
+  <header>
+    <button class="icon-btn" aria-label="メニュー">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </button>
+    <div class="brand">SEATouch</div>
+    <div class="user-box">
+      <div class="email" id="headerUser"></div>
+      <div class="status">
+        <span class="dot"></span>テレワーク
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4a2 2 0 0 0-2 2v18l4-4h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2z"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- 入力画面 -->
+    <section class="screen active" id="screen-form">
+      <h1>在席退席登録</h1>
+      <div class="field">
+        <label for="card">カード番号</label>
+        <input id="card" type="text" inputmode="numeric" autocomplete="off">
+      </div>
+      <div class="field">
+        <label>ユーザーID</label>
+        <div class="value" id="userId"></div>
+      </div>
+      <div class="field">
+        <label for="comment">コメント</label>
+        <input id="comment" type="text" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="datetime">日時</label>
+        <input id="datetime" type="datetime-local">
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="btnIn">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M11 7 9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-8v2h8v14z"/></svg>
+          在席登録
+        </button>
+        <button class="btn btn-outline" id="btnOut">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="m17 7-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5-5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4V5z"/></svg>
+          退席登録
+        </button>
+        <button class="link-btn" data-go="lines">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C8 2 4 2.5 4 6v9.5A3.5 3.5 0 0 0 7.5 19L6 20.5v.5h2.2l2-2h3.6l2 2H18v-.5L16.5 19a3.5 3.5 0 0 0 3.5-3.5V6c0-3.5-4-4-8-4zM7.5 17a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3.5-7H6V6h5v4zm2 0V6h5v4h-5zm3.5 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+          帰りの路線を設定（<span id="lineCountLink">0</span>路線）
+        </button>
+      </div>
+    </section>
+
+    <!-- 完了画面 -->
+    <section class="screen" id="screen-done">
+      <div class="done">
+        <div class="check"><svg width="38" height="38" viewBox="0 0 24 24" fill="#fff"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg></div>
+        <h2 id="doneTitle">退席登録が完了しました</h2>
+        <p class="sub" id="doneSub"></p>
+
+        <div class="rail" id="railCard">
+          <div class="hero">
+            <img src="assets/train.svg" alt="夕方の街を走る電車" id="heroImg">
+            <div class="over"><b>帰りの路線の運行情報</b><span id="railUpdated"></span></div>
+            <span class="demo-badge">デモデータ</span>
+          </div>
+          <div class="body" id="railBody"></div>
+        </div>
+
+        <div class="summary">
+          <dl>
+            <dt>ユーザーID</dt><dd id="sumUser"></dd>
+            <dt>日時</dt><dd id="sumTime"></dd>
+            <dt>コメント</dt><dd id="sumComment"></dd>
+          </dl>
+        </div>
+        <div class="stack">
+          <button class="btn btn-outline" data-go="form">戻る</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 路線設定 -->
+    <section class="screen" id="screen-lines">
+      <div class="lines-head">
+        <h2>帰りの路線を設定</h2>
+        <p>退席登録のときに、選んだ路線の運行情報を表示します（最大5路線）</p>
+      </div>
+      <div id="lineGroups"></div>
+      <div class="stack">
+        <button class="btn btn-primary" data-go="form">保存して戻る</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <nav>
+      <a href="#">利用規約</a>
+      <a href="#">プライバシーポリシー</a>
+      <a href="#">ウェブアクセシビリティ</a>
+    </nav>
+    <div class="copy">Prototype — 実際の登録は行われません</div>
+  </footer>
+
+<script>
+  const USER_ID = 'taro.yamada@example.com';
+  const STORE_KEY = 'my-lines-v1';
+  const MAX_LINES = 5;
+  const LINES = [
+    { id: 'jr-yamanote',      group: 'JR東日本',   name: '山手線',           color: '#9acd32' },
+    { id: 'jr-chuo-rapid',    group: 'JR東日本',   name: '中央線快速',       color: '#f15a22' },
+    { id: 'jr-keihin-tohoku', group: 'JR東日本',   name: '京浜東北線',       color: '#00b2e5' },
+    { id: 'jr-saikyo',        group: 'JR東日本',   name: '埼京線',           color: '#00ac9a' },
+    { id: 'jr-sobu-local',    group: 'JR東日本',   name: '総武線各駅停車',   color: '#ffd400' },
+    { id: 'metro-ginza',      group: '東京メトロ', name: '銀座線',           color: '#ff9500' },
+    { id: 'metro-marunouchi', group: '東京メトロ', name: '丸ノ内線',         color: '#f62e36' },
+    { id: 'metro-hibiya',     group: '東京メトロ', name: '日比谷線',         color: '#b5b5ac' },
+    { id: 'metro-tozai',      group: '東京メトロ', name: '東西線',           color: '#009bbf' },
+    { id: 'metro-chiyoda',    group: '東京メトロ', name: '千代田線',         color: '#00bb85' },
+    { id: 'metro-hanzomon',   group: '東京メトロ', name: '半蔵門線',         color: '#8f76d6' },
+    { id: 'toei-asakusa',     group: '都営地下鉄', name: '浅草線',           color: '#e85298' },
+    { id: 'toei-mita',        group: '都営地下鉄', name: '三田線',           color: '#0079c2' },
+    { id: 'toei-shinjuku',    group: '都営地下鉄', name: '新宿線',           color: '#6cbb5a' },
+    { id: 'toei-oedo',        group: '都営地下鉄', name: '大江戸線',         color: '#b6007a' },
+    { id: 'tokyu-toyoko',     group: '私鉄',       name: '東急東横線',       color: '#da0442' },
+    { id: 'tokyu-dento',      group: '私鉄',       name: '東急田園都市線',   color: '#20a288' },
+    { id: 'odakyu',           group: '私鉄',       name: '小田急小田原線',   color: '#2288cc' },
+    { id: 'keio',             group: '私鉄',       name: '京王線',           color: '#dd0077' },
+    { id: 'seibu-ikebukuro',  group: '私鉄',       name: '西武池袋線',       color: '#ff6600' },
+  ];
+  const lineById = Object.fromEntries(LINES.map(l => [l.id, l]));
+  const $ = (id) => document.getElementById(id);
+
+  $('headerUser').textContent = USER_ID;
+  $('userId').textContent = USER_ID;
+
+  function nowLocal() {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+  $('datetime').value = nowLocal();
+
+  // 自分の帰りの路線（このブラウザ内にだけ保存）
+  function loadLines() {
+    try { const v = JSON.parse(localStorage.getItem(STORE_KEY)); if (Array.isArray(v)) return v.filter(id => lineById[id]); } catch {}
+    return ['jr-yamanote', 'metro-tozai', 'tokyu-dento'];
+  }
+  let myLines = loadLines();
+  function saveLines() { try { localStorage.setItem(STORE_KEY, JSON.stringify(myLines)); } catch {} }
+
+  // ---- 運行情報の取得 ----
+  // 今はデモデータを返す。本物にするときはこの関数の中身だけを
+  // ODPT の odpt:TrainInformation などの取得処理に差し替える。
+  // 戻り値：[{ lineId, status: 'normal'|'delay'|'stop'|'resume', text }]
+  const DEMO_EVENTS = {
+    delay: [
+      '人身事故の影響で、一部列車に遅れが出ています。',
+      '車両点検の影響で、上下線に5〜10分程度の遅れが出ています。',
+      '混雑の影響で、一部列車に遅れが出ています。',
+      '強風の影響で、速度を落として運転しています。',
+    ],
+    stop: [
+      '信号トラブルの影響で、全線で運転を見合わせています。運転再開は19時30分頃の見込みです。振替輸送を実施しています。',
+      '線路内立ち入りの影響で、運転を見合わせています。運転再開は19時頃の見込みです。',
+    ],
+    resume: [
+      '先ほどの人身事故の影響で、ダイヤが乱れています。',
+    ],
+  };
+  const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  function fetchTrainInfo(lineIds) {
+    return new Promise(resolve => setTimeout(() => {
+      resolve(lineIds.map(lineId => {
+        const r = Math.random();
+        const status = r < 0.6 ? 'normal' : r < 0.82 ? 'delay' : r < 0.92 ? 'stop' : 'resume';
+        return { lineId, status, text: status === 'normal' ? '現在、事故・遅延に関する情報はありません。' : pick(DEMO_EVENTS[status]) };
+      }));
+    }, 900));
+  }
+
+  const STATUS_LABEL = {
+    normal: { label: '平常運転', icon: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="9"/></svg>' },
+    delay:  { label: '遅延',     icon: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 1 21h22L12 2zm1 15h-2v-2h2v2zm0-4h-2V9h2v4z"/></svg>' },
+    stop:   { label: '運転見合わせ', icon: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm5 11H7v-2h10v2z"/></svg>' },
+    resume: { label: 'ダイヤ乱れ', icon: '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 4V1L8 5l4 4V6a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8z"/></svg>' },
+  };
+  const REFRESH_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.74 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+
+  async function loadTrainInfo() {
+    const body = $('railBody');
+    if (myLines.length === 0) {
+      body.innerHTML = '<div class="empty">帰りの路線が設定されていません。<br><button class="link-btn" style="margin:4px auto 0" data-go="lines">路線を設定する</button></div>';
+      bindGo(body);
+      return;
+    }
+    body.innerHTML = '<div class="loading"><div class="track"><div></div></div>運行情報を取得しています…</div>';
+    const info = await fetchTrainInfo(myLines);
+    const t = new Date();
+    $('railUpdated').textContent = `${t.getHours()}:${String(t.getMinutes()).padStart(2, '0')} 更新`;
+
+    const worst = info.some(i => i.status === 'stop') ? 'stop' : info.some(i => i.status !== 'normal') ? 'warn' : 'ok';
+    const troubled = info.filter(i => i.status !== 'normal').map(i => lineById[i.lineId].name);
+    const alert = {
+      ok:   '<b>帰りの路線はすべて平常運転です</b>気をつけてお帰りください。',
+      warn: `<b>帰りの路線に遅れがあります</b>${troubled.join('・')}をご確認ください。少し時間に余裕を持ってどうぞ。`,
+      stop: `<b>運転見合わせの路線があります</b>${troubled.join('・')}の情報をご確認のうえ、振替輸送や別ルートをご検討ください。`,
+    }[worst];
+
+    body.innerHTML = `<div class="alert ${worst}"><div>${alert}</div></div>` + info.map(i => {
+      const l = lineById[i.lineId], s = STATUS_LABEL[i.status];
+      return `<div class="line">
+        <span class="color" style="background:${l.color}"></span>
+        <div><div class="name">${l.name}</div><div class="text">${i.text}</div></div>
+        <span class="status ${i.status}">${s.icon}${s.label}</span>
+      </div>`;
+    }).join('') + `<div class="foot"><span>※架空の運行情報です</span><button class="refresh" id="btnRefresh">${REFRESH_ICON}更新</button></div>`;
+    $('btnRefresh').addEventListener('click', (e) => { e.currentTarget.classList.add('spin'); loadTrainInfo(); });
+  }
+
+  function show(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id));
+    window.scrollTo(0, 0);
+  }
+  function go(name) {
+    if (name === 'lines') renderLineSettings();
+    if (name === 'form') { $('datetime').value = nowLocal(); $('lineCountLink').textContent = myLines.length; }
+    show(`screen-${name}`);
+  }
+  function bindGo(root) { root.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go))); }
+  bindGo(document);
+  $('lineCountLink').textContent = myLines.length;
+
+  function renderLineSettings() {
+    const groups = [...new Set(LINES.map(l => l.group))];
+    $('lineGroups').innerHTML = groups.map(g => `<div class="group"><h3>${g}</h3><div class="chips">${
+      LINES.filter(l => l.group === g).map(l => `<button class="chip" data-id="${l.id}" aria-pressed="${myLines.includes(l.id)}"><i style="background:${l.color}"></i>${l.name}</button>`).join('')
+    }</div></div>`).join('');
+  }
+  $('lineGroups').addEventListener('click', (e) => {
+    const c = e.target.closest('.chip');
+    if (!c) return;
+    const id = c.dataset.id;
+    if (myLines.includes(id)) myLines = myLines.filter(x => x !== id);
+    else if (myLines.length >= MAX_LINES) { alert(`選べるのは${MAX_LINES}路線までです`); return; }
+    else myLines.push(id);
+    saveLines();
+    c.setAttribute('aria-pressed', myLines.includes(id));
+  });
+
+  function fillSummary(kind) {
+    const dt = $('datetime').value || nowLocal();
+    $('doneTitle').textContent = `${kind}登録が完了しました`;
+    $('sumUser').textContent = USER_ID;
+    $('sumTime').textContent = dt.replace('T', ' ').replace(/-/g, '/');
+    $('sumComment').textContent = $('comment').value || '—';
+  }
+
+  $('btnIn').addEventListener('click', () => {
+    fillSummary('在席');
+    $('doneSub').textContent = '今日もよろしくお願いします';
+    $('railCard').hidden = true;
+    show('screen-done');
+  });
+  $('btnOut').addEventListener('click', () => {
+    fillSummary('退席');
+    $('doneSub').textContent = 'おつかれさまでした！';
+    $('railCard').hidden = false;
+    $('railUpdated').textContent = '';
+    show('screen-done');
+    loadTrainInfo();
+  });
+</script>
+</body>
+</html>

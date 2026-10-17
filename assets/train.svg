@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 150">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b3a7a"/><stop offset=".55" stop-color="#e0707a"/><stop offset="1" stop-color="#f7b267"/></linearGradient>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f6f8"/><stop offset="1" stop-color="#c9d1d9"/></linearGradient>
+  </defs>
+  <rect width="360" height="150" fill="url(#sky)"/>
+  <circle cx="290" cy="98" r="22" fill="#ffd27a" opacity=".9"/>
+  <g fill="#fff"><circle cx="40" cy="22" r="1.4"/><circle cx="110" cy="14" r="1"/><circle cx="200" cy="26" r="1.2"/><circle cx="330" cy="18" r="1.4"/></g>
+  <g fill="#3a2f5c" opacity=".85">
+    <rect x="0" y="70" width="34" height="50"/><rect x="30" y="56" width="26" height="64"/><rect x="56" y="80" width="30" height="40"/><rect x="200" y="62" width="30" height="58"/><rect x="228" y="76" width="22" height="44"/><rect x="318" y="66" width="42" height="54"/>
+  </g>
+  <g fill="#ffd56b" opacity=".8"><rect x="36" y="64" width="4" height="5"/><rect x="44" y="76" width="4" height="5"/><rect x="208" y="70" width="4" height="5"/><rect x="216" y="86" width="4" height="5"/><rect x="326" y="74" width="4" height="5"/></g>
+  <rect x="0" y="126" width="360" height="24" fill="#2a2440"/>
+  <rect x="0" y="128" width="360" height="3" fill="#8a8fa8"/>
+  <g class="train">
+    <path d="M70 84 h190 q26 0 32 26 v10 h-222z" fill="url(#body)" stroke="#5f6b78" stroke-width="2"/>
+    <rect x="70" y="112" width="222" height="7" fill="#1e4fa8"/>
+    <rect x="70" y="104" width="222" height="3" fill="#6cc24a"/>
+    <g fill="#29364a"><rect x="80" y="90" width="22" height="13" rx="2"/><rect x="110" y="90" width="22" height="13" rx="2"/><rect x="140" y="90" width="22" height="13" rx="2"/><rect x="170" y="90" width="22" height="13" rx="2"/><rect x="200" y="90" width="22" height="13" rx="2"/><rect x="230" y="90" width="22" height="13" rx="2"/></g>
+    <g fill="#ffe9a8" opacity=".7"><rect x="80" y="90" width="22" height="13" rx="2"/><rect x="140" y="90" width="22" height="13" rx="2"/><rect x="200" y="90" width="22" height="13" rx="2"/></g>
+    <path d="M262 90 h14 q8 0 12 12 h-26z" fill="#29364a"/>
+    <circle cx="288" cy="114" r="3" fill="#fff6c9"/>
+    <g fill="#333"><circle cx="100" cy="122" r="6"/><circle cx="125" cy="122" r="6"/><circle cx="240" cy="122" r="6"/><circle cx="265" cy="122" r="6"/></g>
+  </g>
+</svg>
